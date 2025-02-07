@@ -9,6 +9,12 @@ Servo wrist_ver;
 Servo gripper;
 
 int x;
+#define SMOOTHING_FACTOR 0.7
+
+int smoothValue(int newValue, int oldValue) {
+  return (SMOOTHING_FACTOR * oldValue) + ((1 - SMOOTHING_FACTOR) * newValue);
+}
+
 void setup() {
   Braccio.begin();
   Serial.begin(115200);
@@ -22,7 +28,7 @@ void loop() {
   Serial.print(x + 1);
   if (Serial.available()) {
     String data = Serial.readStringUntil('\n');  // Read input from Python
-    int values[4];
+    int values[8];
 
     int i = 0;
     char *token = strtok(const_cast<char *>(data.c_str()), ",");
@@ -31,6 +37,9 @@ void loop() {
       token = strtok(NULL, ",");
     }
     int baseAngle = map(values[0], -100, 100, 0, 180);
-    Braccio.ServoMovement(20,         baseAngle, 0, 0, 0, 0,  0);
+    static int smoothedBaseAngle = baseAngle/2; // Store last known position
+    smoothedBaseAngle = smoothValue(baseAngle, smoothedBaseAngle);
+
+    Braccio.ServoMovement(10,         baseAngle, 0, 0, 0, 0,  0);
   }
 }

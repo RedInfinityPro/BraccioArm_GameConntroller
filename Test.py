@@ -37,6 +37,17 @@ def controller_connectionAttempt():
         exit()
 controller_connectionAttempt()
 
+def apply_deadzone(value, threshold=50):  # Deadzone for stability
+    return 0 if abs(value) < threshold else value
+
+prev_data = None
+def should_send(new_data):
+    global prev_data
+    if prev_data is None or abs(int(new_data.split(",")[0]) - int(prev_data.split(",")[0])) > 5:  
+        prev_data = new_data
+        return True
+    return False
+
 def main():
     try:
         running = True
@@ -49,14 +60,15 @@ def main():
             for control in Gamecontroller:
                 #print(control.get_name())
                 # print stick states between between -360 and 360
-                left_stick = [int(control.get_axis(0) * 360) , int(control.get_axis(1) * -360), control.get_button(8)]
-                right_stick = [int(control.get_axis(2) * 360), int(control.get_axis(3) * -360), control.get_button(9)]
+                left_stick = [apply_deadzone(int(control.get_axis(0) * 360)), apply_deadzone(int(control.get_axis(1) * -360)), control.get_button(8)]
+                right_stick = [apply_deadzone(int(control.get_axis(2) * 360)), apply_deadzone(int(control.get_axis(3) * -360)), control.get_button(9)]
                 print(left_stick, right_stick)
                 # Send data to Arduino
                 data = f"{left_stick[0]},{left_stick[1]},{left_stick[0]},{left_stick[1]}"
-                ser.write(data.encode('utf-8'))
-                print(f"Sent: {data.strip()}")
-                time.sleep(0.1)
+                if should_send(data):
+                    ser.write(data.encode('utf-8'))
+                    print(f"Sent: {data.strip()}")
+                    time.sleep(0.1)
 
     except KeyboardInterrupt:
         print("\nStopping script.")
